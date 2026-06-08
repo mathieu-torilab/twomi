@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CA-3007 · Home Video Content Analysis Pipeline</title>
+<style>
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#1e2530;--border:#2a3244;
+  --accent:#7c6ff7;--green:#26d97f;--yellow:#fbbf24;--red:#f87171;
+  --blue:#60a5fa;--pink:#f472b6;--orange:#fb923c;--teal:#2dd4bf;
+  --purple:#c084fc;--text:#e2e8f0;--muted:#7a8599;--muted2:#3a4458;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,sans-serif;font-size:15px;line-height:1.7;}
+
+/* ── HERO ── */
+.hero{background:linear-gradient(135deg,#0f1420 0%,#180f35 50%,#0c1a20 100%);padding:52px 48px 44px;border-bottom:1px solid var(--border);}
+.hero-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;}
+.chip{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 11px;font-size:0.75rem;color:var(--muted);font-family:monospace;}
+.hero h1{font-size:2rem;font-weight:800;line-height:1.2;margin-bottom:10px;}
+.hero h1 .g{background:linear-gradient(90deg,#7c6ff7,#2dd4bf);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.hero-sub{color:var(--muted);font-size:0.9rem;max-width:700px;line-height:1.65;}
+.hero-links{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;}
+.hlink{display:inline-flex;align-items:center;gap:6px;padding:7px 16px;border-radius:8px;font-size:0.82rem;font-weight:600;text-decoration:none;border:1px solid;}
+.hlink.jira{background:#1a2550;border-color:#3b52a0;color:#93b4ff;}
+.hlink.ep{background:#142a1e;border-color:#2a6040;color:#5ddb90;}
+
+/* ── WRAP ── */
+.wrap{max-width:1040px;margin:0 auto;padding:52px 36px;}
+
+/* ── US BOX ── */
+.us-box{background:linear-gradient(135deg,#1a1535,#0e1e2a);border:1px solid #3a2f6a;border-radius:14px;padding:26px 30px;margin-bottom:0;}
+.us-line{font-size:0.95rem;margin-bottom:5px;}
+.us-line strong{color:var(--accent);}
+
+/* ── CONTEXT ── */
+.ctx{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:22px 26px;color:#c0cbdd;font-size:0.9rem;line-height:1.75;}
+.ctx p+p{margin-top:10px;}
+.tref{display:inline-block;background:#142a14;border:1px solid #2a5a2a;border-radius:4px;padding:1px 7px;font-size:0.78rem;font-family:monospace;color:#6ddb8a;}
+
+/* ── SEC ── */
+.sec{margin-bottom:60px;}
+.sec-hd{display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.sec-hd h2{font-size:1.2rem;font-weight:700;}
+.nbadge{background:var(--accent);color:#fff;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:800;flex-shrink:0;}
+.sec-desc{color:var(--muted);font-size:0.88rem;margin-bottom:22px;max-width:740px;}
+
+/* ── FLOW ── */
+.flow{display:flex;align-items:stretch;flex-wrap:wrap;gap:0;margin:20px 0;}
+.fs{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 12px;font-size:0.8rem;text-align:center;flex:1;min-width:100px;}
+.fs-ico{font-size:1.4rem;margin-bottom:5px;}
+.fs-lbl{font-weight:700;font-size:0.8rem;}
+.fs-sub{font-size:0.71rem;color:var(--muted);margin-top:2px;}
+.fa{display:flex;align-items:center;color:var(--muted2);font-size:1.2rem;padding:0 3px;}
+.flow-note{background:#0d1218;border:1px dashed var(--muted2);border-radius:8px;padding:10px 16px;font-size:0.82rem;color:var(--muted);margin-top:12px;}
+
+/* ── TRIGGER CARDS ── */
+.trig-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.trig{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.trig-head{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--border);font-weight:700;font-size:0.95rem;}
+.trig-head .tg{font-size:1.3rem;}
+.trig.new .trig-head{color:var(--green);}
+.trig.exist .trig-head{color:var(--yellow);}
+.trig-body{padding:16px 18px;font-size:0.85rem;color:#c0cbdd;line-height:1.65;}
+.trig-body p+p{margin-top:8px;}
+.sol{background:#0a0f1a;border:1px solid var(--border);border-radius:8px;padding:11px 14px;margin-top:10px;}
+.sol-name{font-size:0.8rem;font-weight:700;color:var(--teal);margin-bottom:3px;}
+.sol-desc{font-size:0.8rem;color:var(--muted);line-height:1.55;}
+.sol.rec{border-color:var(--green);background:#0a1810;}
+.sol.rec .sol-name{color:var(--green);}
+.rec-pill{display:inline-block;background:#0d2a1a;color:var(--green);border:1px solid var(--green);border-radius:10px;padding:1px 8px;font-size:0.68rem;font-weight:700;margin-left:6px;}
+
+/* ── SIGNAL CARDS ── */
+.sig-list{display:flex;flex-direction:column;gap:28px;}
+.sig{background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.sig-head{display:flex;align-items:center;gap:14px;padding:20px 24px;border-bottom:1px solid var(--border);}
+.sig-ico{font-size:2rem;flex-shrink:0;}
+.sig-num{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:3px 10px;font-size:0.75rem;font-family:monospace;font-weight:700;color:var(--yellow);}
+.sig-title{font-size:1.05rem;font-weight:700;}
+.sig-subtitle{font-size:0.82rem;color:var(--muted);margin-top:2px;}
+.sig-body{padding:22px 24px;display:flex;flex-direction:column;gap:18px;}
+
+/* ── WHAT IS IT ── */
+.what{background:#0d1520;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;padding:14px 18px;font-size:0.88rem;color:#c0cbdd;line-height:1.7;}
+.what strong{color:var(--text);}
+
+/* ── LOGIC ── */
+.logic{font-size:0.85rem;}
+.logic-title{font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px;}
+.logic ul{padding-left:18px;}
+.logic li{margin-bottom:6px;color:#c0cbdd;}
+
+/* ── EXAMPLE ── */
+.ex{background:#0a1610;border-left:3px solid var(--green);border-radius:0 8px 8px 0;padding:14px 18px;font-size:0.85rem;color:#b8d8c0;line-height:1.65;}
+.ex-lbl{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--green);margin-bottom:7px;}
+.ex code{background:#0d2010;border:1px solid #1a4020;border-radius:4px;padding:1px 6px;font-family:monospace;color:#6ddb8a;font-size:0.82rem;}
+
+/* ── ERROR ── */
+.err{background:#120a0a;border-left:3px solid var(--red);border-radius:0 8px 8px 0;padding:14px 18px;font-size:0.84rem;}
+.err-lbl{font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--red);margin-bottom:7px;}
+.err ul{padding-left:18px;}
+.err li{color:#fca5a5;margin-bottom:5px;}
+
+/* ── ENTITY VIZ ── */
+.entity-frame{background:#0a0f1a;border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;}
+.entity-scene{background:#1a2030;border-radius:10px;height:130px;display:flex;align-items:center;justify-content:center;gap:20px;position:relative;overflow:hidden;margin-bottom:14px;}
+.entity-obj{position:relative;text-align:center;}
+.entity-obj .box{border:2px solid;border-radius:6px;padding:4px 8px;font-size:1.4rem;display:flex;align-items:center;justify-content:center;width:52px;height:52px;}
+.entity-obj .elbl{font-size:0.68rem;font-weight:700;margin-top:4px;}
+.entity-list{display:flex;gap:8px;flex-wrap:wrap;}
+.etag{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:20px;font-size:0.8rem;font-weight:600;border:1px solid;}
+.ecat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:4px;}
+.ecat{background:#0a0f1a;border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center;}
+.ecat-ico{font-size:1.6rem;display:block;margin-bottom:6px;}
+.ecat-name{font-weight:700;font-size:0.85rem;margin-bottom:4px;}
+.ecat-desc{font-size:0.76rem;color:var(--muted);line-height:1.5;}
+
+/* ── GENRE GRID ── */
+.genre-wrap{background:#0a0f1a;border:1px solid var(--border);border-radius:12px;padding:18px;}
+.genre-tags{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;}
+.gtag{border-radius:20px;padding:5px 14px;font-size:0.8rem;font-weight:600;border:1px solid;}
+.gtag-blue{background:#1a2a4a;border-color:#4a80cc;color:#93c5fd;}
+.conf-row{display:flex;align-items:center;gap:10px;margin-bottom:7px;font-size:0.82rem;}
+.conf-label{width:180px;color:var(--text);}
+.conf-bg{flex:1;height:8px;background:#1a1a2e;border-radius:4px;overflow:hidden;}
+.conf-bar{height:100%;border-radius:4px;}
+.conf-val{width:36px;text-align:right;font-weight:700;font-family:monospace;font-size:0.8rem;}
+.cbadge{padding:2px 8px;border-radius:10px;font-size:0.7rem;font-weight:700;}
+.cb-high{background:#0d2e1a;color:var(--green);border:1px solid var(--green);}
+.cb-default{background:#1e1e0a;color:var(--yellow);border:1px solid var(--yellow);}
+
+/* ── MOOD TAGS ── */
+.mood-grid{display:flex;gap:8px;flex-wrap:wrap;}
+.mtag{border-radius:10px;padding:10px 16px;border:1px solid;text-align:center;min-width:104px;}
+.mtag-ico{font-size:1.4rem;display:block;margin-bottom:4px;}
+.mtag-lbl{font-size:0.82rem;font-weight:700;}
+.mtag-desc{font-size:0.7rem;margin-top:2px;opacity:.7;}
+.m1{background:#1a1535;border-color:#7c6ff7;color:#b39dff;}
+.m2{background:#0f2028;border-color:#2dd4bf;color:#5eeee0;}
+.m3{background:#1a2030;border-color:#60a5fa;color:#93c5fd;}
+.m4{background:#1a1010;border-color:#fb923c;color:#fcd34d;}
+.m5{background:#0a1a14;border-color:#26d97f;color:#6ddb8a;}
+.m6{background:#1a0a10;border-color:#f472b6;color:#fba5c9;}
+.m7{background:#1d1530;border-color:#c084fc;color:#d6b4ff;}
+.m8{background:#101a22;border-color:#fbbf24;color:#fcd34d;}
+.m9{background:#0d1a1a;border-color:#2dd4bf;color:#7ee7d8;}
+.m10{background:#160a16;border-color:#c084fc;color:#e0baff;}
+
+/* ── SETTING ── */
+.io-split{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px;}
+.io-card{border-radius:12px;padding:18px;text-align:center;border:1px solid;}
+.io-in{background:#101c2e;border-color:var(--blue);}
+.io-out{background:#0c1f12;border-color:var(--green);}
+.io-ico{font-size:2rem;display:block;margin-bottom:6px;}
+.io-name{font-weight:800;font-size:1rem;}
+.io-in .io-name{color:var(--blue);}
+.io-out .io-name{color:var(--green);}
+.io-sub{font-size:0.76rem;color:var(--muted);margin-top:3px;}
+.setting-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.setting-section{background:#0a0f1a;border:1px solid var(--border);border-radius:10px;padding:16px;}
+.setting-section .ss-title{font-size:0.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:10px;}
+.scene-tags{display:flex;flex-wrap:wrap;gap:6px;}
+.stag{padding:5px 11px;border-radius:8px;font-size:0.78rem;font-weight:600;}
+.stag-in{background:#1a2030;color:var(--blue);}
+.stag-out{background:#0e2010;color:var(--green);}
+
+/* ── OUTPUT RECORD ── */
+.rec-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px;}
+.rec-field{background:#0a0f1a;border:1px solid var(--border);border-radius:8px;padding:10px 13px;}
+.rf-name{font-size:0.75rem;font-weight:700;color:var(--teal);margin-bottom:3px;}
+.rf-desc{font-size:0.75rem;color:var(--muted);}
+
+/* ── NFR ── */
+.nfr-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+.nfr{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.nfr-ico{font-size:1.2rem;margin-bottom:6px;}
+.nfr-title{font-weight:700;font-size:0.85rem;color:var(--yellow);margin-bottom:4px;}
+.nfr-desc{font-size:0.82rem;color:var(--muted);}
+
+/* ── LIST CARD ── */
+.lcard{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 22px;}
+.lcard ol,.lcard ul{padding-left:20px;font-size:0.88rem;color:#c0cbdd;}
+.lcard li{margin-bottom:8px;}
+.lcard li strong{color:var(--yellow);}
+.oq-badge{display:inline-block;background:#142a14;border:1px solid #2a5a2a;border-radius:4px;padding:1px 6px;font-size:0.73rem;color:#6ddb8a;margin-left:6px;}
+
+/* ── RULES TABLE ── */
+.rules-wrap{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.rules{width:100%;border-collapse:collapse;font-size:0.83rem;}
+.rules th{text-align:left;padding:11px 14px;background:var(--surface2);color:var(--muted);font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);}
+.rules td{padding:12px 14px;border-bottom:1px solid var(--border);color:#c0cbdd;vertical-align:top;line-height:1.55;}
+.rules tr:last-child td{border-bottom:none;}
+.rules .sig-cell{font-weight:700;color:var(--teal);white-space:nowrap;}
+.rules .sig-cell .ic{margin-right:5px;}
+.rules code{background:#0d2010;border:1px solid #1a4020;border-radius:4px;padding:1px 6px;font-family:monospace;color:#6ddb8a;font-size:0.8rem;}
+.rules .none{color:var(--yellow);font-weight:600;}
+.rules-foot{padding:12px 16px;font-size:0.8rem;color:var(--muted);border-top:1px solid var(--border);background:#0d1218;}
+@media(max-width:640px){.rules-wrap{overflow-x:auto;}.rules{min-width:640px;}}
+
+hr{border:none;border-top:1px solid var(--border);margin:44px 0;}
+
+@media(max-width:640px){
+  .hero{padding:32px 20px 28px;}
+  .wrap{padding:28px 16px;}
+  .flow{gap:3px;}
+  .fs{min-width:80px;padding:10px 8px;}
+  .setting-grid{grid-template-columns:1fr;}
+  .trig-grid{grid-template-columns:1fr;}
+  .io-split{grid-template-columns:1fr;}
+  .ecat-grid{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-chips">
+    <span class="chip">CA-3007</span>
+    <span class="chip">Backend · No UI</span>
+    <span class="chip">4 Analysis Signals</span>
+    <span class="chip">MVP</span>
+  </div>
+  <h1><span class="g">Home Video Content</span><br/>Analysis Pipeline</h1>
+  <div class="hero-sub">When a creator saves a home video, the system automatically runs AI analysis and extracts 4 structured signals — Genre, Mood/Aesthetic, Detected Entities, and Setting — used by the recommendation engine, genre classification, and hashtag suggestion, without re-processing the video per feature.</div>
+  <div class="hero-links">
+    <a class="hlink jira" href="https://castalk.atlassian.net/browse/CA-3007">Jira CA-3007</a>
+    <a class="hlink ep">Epic: Home Feed Recommendation</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- USER STORY -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">1</div><h2>User Story</h2></div>
+  <div class="us-box">
+    <div class="us-line"><strong>As a</strong> product owner,</div>
+    <div class="us-line"><strong>I want</strong> the system to automatically analyze home video content after it is saved,</div>
+    <div class="us-line"><strong>So that</strong> downstream features — genre classification, hashtag suggestion, and recommendation logic — can use rich analysis output without re-processing the video.</div>
+  </div>
+</div>
+
+<!-- CONTEXT -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">2</div><h2>Context</h2></div>
+  <div class="ctx">
+    <p>Without this pipeline, each feature (genre classification <span class="tref">CA-2964</span>, hashtag suggestion <span class="tref">CA-1008</span>, recommendation engine) would re-process the same video independently — wasteful and inconsistent.</p>
+    <p>This ticket creates a <strong>single shared pipeline</strong> that runs once per video and stores a rich output for all consumers. The richer the output, the more dimensions the recommendation engine can use to match the right video to the right user.</p>
+    <p>This pipeline is <strong>backend-only</strong> with no user-facing UI. It runs asynchronously and does not block the video save flow.</p>
+  </div>
+</div>
+
+<!-- POINTS OF ANALYSIS -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">3</div><h2>Points of Analysis</h2></div>
+  <div class="sec-desc">When does analysis get triggered? Two cases: videos saved going forward, and the library of videos that already exists.</div>
+  <div class="trig-grid">
+
+    <div class="trig new">
+      <div class="trig-head"><span class="tg">🆕</span> New videos</div>
+      <div class="trig-body">
+        <p>Analysis is triggered <strong>automatically after the creator saves</strong> the video. The job runs asynchronously and does not block the save flow — the creator and fans see the video as saved immediately.</p>
+        <p>This is the primary, fully in-scope trigger for the MVP.</p>
+      </div>
+    </div>
+
+    <div class="trig exist">
+      <div class="trig-head"><span class="tg">🗄️</span> Existing videos</div>
+      <div class="trig-body">
+        <p>Videos saved before this pipeline existed have no analysis record. These are processed <strong>by batch only</strong>.</p>
+        <div class="sol rec">
+          <div class="sol-name">Batch backfill</div>
+          <div class="sol-desc">A scheduled background job processes the existing library in rate-limited batches during off-peak hours. Prioritize by recency and engagement so the most-watched videos get analyzed first. No lazy or on-demand analysis.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<hr/>
+
+<!-- MAIN FLOW -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">4</div><h2>Main Flow</h2></div>
+  <div class="sec-desc">The pipeline runs entirely in the background after the creator saves a video.</div>
+  <div class="flow">
+    <div class="fs"><div class="fs-ico">💾</div><div class="fs-lbl">Video Saved</div><div class="fs-sub">Creator saves home video</div></div>
+    <div class="fa">›</div>
+    <div class="fs"><div class="fs-ico">⚡</div><div class="fs-lbl">Async Job</div><div class="fs-sub">Non-blocking trigger</div></div>
+    <div class="fa">›</div>
+    <div class="fs"><div class="fs-ico">🎞️</div><div class="fs-lbl">Extract Frames</div><div class="fs-sub">Sampling — TBD by tech team</div></div>
+    <div class="fa">›</div>
+    <div class="fs"><div class="fs-ico">🤖</div><div class="fs-lbl">AI Vision Model</div><div class="fs-sub">Analyze sampled frames</div></div>
+    <div class="fa">›</div>
+    <div class="fs"><div class="fs-ico">🧮</div><div class="fs-lbl">Compute 4 Signals</div><div class="fs-sub">All criteria below</div></div>
+    <div class="fa">›</div>
+    <div class="fs"><div class="fs-ico">📦</div><div class="fs-lbl">Store Record</div><div class="fs-sub">One record per video</div></div>
+    <div class="fa">›</div>
+    <div class="fs"><div class="fs-ico">🔗</div><div class="fs-lbl">Downstream</div><div class="fs-sub">Feed · Genre · Hashtags</div></div>
+  </div>
+  <div class="flow-note"><strong>Frame extraction — depends on tech team.</strong> Source clip is ~10 seconds at 24 fps (≈ 240 total frames). Analyzing every frame is expensive; the exact sampling rate (e.g., 1–2 frames/second) is a tech-team decision based on AI model cost and accuracy. Creator and fans see the video as saved immediately; analysis completes in the background within 5 minutes.</div>
+</div>
+
+<hr/>
+
+<!-- THE 4 SIGNALS -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">5</div><h2>The 4 Analysis Signals</h2></div>
+  <div class="sec-desc">Each signal is extracted from the sampled video frames by the AI vision model and stored for downstream use. Other candidate signals (embedding vector, hook strength, language) are discarded from this scope.</div>
+
+  <div class="sig-list">
+
+    <!-- ① GENRE -->
+    <div class="sig">
+      <div class="sig-head">
+        <div class="sig-ico">🎭</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;"><span class="sig-num">Signal 1</span></div>
+          <div class="sig-title">Genre</div>
+          <div class="sig-subtitle">1–3 coarse category labels · Detailed classification owned by CA-2964</div>
+        </div>
+      </div>
+      <div class="sig-body">
+        <div class="what">
+          Genre is the <strong>most human-readable signal</strong> — a broad category label that describes what the video is about. It is useful for browse pages, filter chips, creator analytics, and as a fallback signal when entity/mood-based recommendations are sparse (e.g., for brand new users with no behavior history). Genre is a coarse label; fine-grained matching relies on entities and mood.
+        </div>
+        <div class="genre-wrap">
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">12 supported genres:</div>
+          <div class="genre-tags">
+            <span class="gtag gtag-blue">Music</span><span class="gtag gtag-blue">Dance</span><span class="gtag gtag-blue">Comedy</span><span class="gtag gtag-blue">Entertainment</span><span class="gtag gtag-blue">Beauty &amp; Fashion</span><span class="gtag gtag-blue">Food</span><span class="gtag gtag-blue">Sports</span><span class="gtag gtag-blue">Lifestyle</span><span class="gtag gtag-blue">Animals</span><span class="gtag gtag-blue">Gaming</span><span class="gtag gtag-blue">Education</span><span class="gtag gtag-blue">Travel</span>
+          </div>
+          <div style="font-size:0.78rem;color:var(--muted);margin:14px 0 8px;">Example confidence scores from AI:</div>
+          <div class="conf-row"><span class="conf-label">Music</span><div class="conf-bg"><div class="conf-bar" style="width:82%;background:var(--green);"></div></div><span class="conf-val" style="color:var(--green);">0.82</span><span class="cbadge cb-high">assigned</span></div>
+          <div class="conf-row"><span class="conf-label">Dance</span><div class="conf-bg"><div class="conf-bar" style="width:71%;background:var(--green);"></div></div><span class="conf-val" style="color:var(--green);">0.71</span><span class="cbadge cb-high">assigned</span></div>
+          <div class="conf-row"><span class="conf-label">Sports</span><div class="conf-bg"><div class="conf-bar" style="width:12%;background:var(--muted2);"></div></div><span class="conf-val" style="color:var(--muted);">0.12</span><span style="font-size:0.72rem;color:var(--muted);">dropped</span></div>
+          <div style="font-size:0.8rem;color:var(--muted);margin-top:10px;">Genres assigned: <strong style="color:var(--text);">Music, Dance</strong> (all scoring above 0.3, top 3 kept). If no genre scores above 0.3 → store <strong style="color:var(--yellow);">null — no tag</strong>. There is no default genre.</div>
+        </div>
+        <div class="err">
+          <div class="err-lbl">Error Handling</div>
+          <ul><li>If AI returns no genre scores above 0.3: store null — no tag and log a warning. Downstream features must handle a missing genre gracefully.</li></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② MOOD -->
+    <div class="sig">
+      <div class="sig-head">
+        <div class="sig-ico">🎨</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;"><span class="sig-num">Signal 2</span></div>
+          <div class="sig-title">Mood / Aesthetic Tags</div>
+          <div class="sig-subtitle">Controlled vocabulary · Personalization axis orthogonal to genre and topic</div>
+        </div>
+      </div>
+      <div class="sig-body">
+        <div class="what">
+          Mood and aesthetic tags describe the <strong>emotional tone and visual style</strong> of the video — completely separate from what the video is about. Two Music videos can have completely different moods. This axis lets the recommendation engine match users to the <em>feeling</em> of content, not just the subject. Example: a user who watches calm content at night should get more calm content in the evening — regardless of genre.
+        </div>
+        <div style="font-size:0.8rem;color:var(--muted);">Controlled vocabulary — the 10 most common mood/aesthetic tags. The AI may only assign tags from this fixed list:</div>
+        <div class="mood-grid">
+          <div class="mtag m1"><span class="mtag-ico">⚡</span><span class="mtag-lbl">energetic</span><div class="mtag-desc">Fast, vibrant, high-energy</div></div>
+          <div class="mtag m2"><span class="mtag-ico">🌊</span><span class="mtag-lbl">calm</span><div class="mtag-desc">Slow, peaceful, relaxed</div></div>
+          <div class="mtag m8"><span class="mtag-ico">😊</span><span class="mtag-lbl">happy</span><div class="mtag-desc">Bright, upbeat, positive</div></div>
+          <div class="mtag m6"><span class="mtag-ico">😂</span><span class="mtag-lbl">funny</span><div class="mtag-desc">Playful, comedic, lighthearted</div></div>
+          <div class="mtag m5"><span class="mtag-ico">🌸</span><span class="mtag-lbl">wholesome</span><div class="mtag-desc">Warm, cozy, friendly</div></div>
+          <div class="mtag m7"><span class="mtag-ico">✨</span><span class="mtag-lbl">aesthetic</span><div class="mtag-desc">Dreamy, pretty, stylized</div></div>
+          <div class="mtag m3"><span class="mtag-ico">🎬</span><span class="mtag-lbl">cinematic</span><div class="mtag-desc">High contrast, dramatic composition</div></div>
+          <div class="mtag m4"><span class="mtag-ico">📻</span><span class="mtag-lbl">nostalgic</span><div class="mtag-desc">Warm, grainy, lo-fi, retro</div></div>
+          <div class="mtag m10"><span class="mtag-ico">💗</span><span class="mtag-lbl">romantic</span><div class="mtag-desc">Soft, intimate, tender</div></div>
+          <div class="mtag m9"><span class="mtag-ico">🌑</span><span class="mtag-lbl">dark</span><div class="mtag-desc">Moody, low-light, intense</div></div>
+        </div>
+        <div class="logic">
+          <div class="logic-title">Logic</div>
+          <ul>
+            <li>Assign 1 to 3 tags per video, each stored with its own confidence score.</li>
+            <li>Only assign tags whose score exceeds <strong>0.3</strong>; keep the top 3 by score. Maximum 3.</li>
+            <li>Tags must come from the fixed controlled vocabulary above — no free-form labels.</li>
+            <li>Derived from: color palette, pacing, lighting style, visual composition, and audio tone signals.</li>
+            <li>Tags are not mutually exclusive — a video can be both <em>cinematic</em> and <em>dark</em>.</li>
+          </ul>
+        </div>
+        <div class="ex">
+          <div class="ex-lbl">Examples</div>
+          Fast-paced dance video, neon colors, bright lighting → <code>energetic 0.91</code><br/>
+          Avatar journaling softly in warm café lighting → <code>calm 0.84</code> + <code>wholesome 0.62</code><br/>
+          Avatar in a dark high-contrast studio, slow dramatic music → <code>cinematic 0.77</code> + <code>dark 0.71</code>
+        </div>
+        <div class="err">
+          <div class="err-lbl">Error Handling</div>
+          <ul><li>If no mood/aesthetic tag scores above 0.3: store null — no tag. Downstream features must handle gracefully.</li></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③ ENTITIES -->
+    <div class="sig">
+      <div class="sig-head">
+        <div class="sig-ico">🔍</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;"><span class="sig-num">Signal 3</span></div>
+          <div class="sig-title">Detected Entities</div>
+          <div class="sig-subtitle">Granular list of things visible in frames · Enables fine-grained interest matching</div>
+        </div>
+      </div>
+      <div class="sig-body">
+        <div class="what">
+          Entities are the specific things the AI can see in the video frames, grouped into three categories: <strong>people, animals, and objects</strong>. This goes far beyond genre — a single Music video can contain a person, a guitar, a cat, and a studio background simultaneously. Entities cross-cut genre and let the recommendation engine match users on very specific interests.
+        </div>
+        <div class="ecat-grid">
+          <div class="ecat"><span class="ecat-ico">👤</span><div class="ecat-name" style="color:var(--blue);">People</div><div class="ecat-desc">Presence and count of people / avatars in frame</div></div>
+          <div class="ecat"><span class="ecat-ico">🐾</span><div class="ecat-name" style="color:var(--orange);">Animals</div><div class="ecat-desc">Animals with species where detectable (cat, dog, bird…)</div></div>
+          <div class="ecat"><span class="ecat-ico">📦</span><div class="ecat-name" style="color:var(--green);">Objects</div><div class="ecat-desc">Food, instruments, vehicles, products, furniture, devices…</div></div>
+        </div>
+        <div class="entity-frame">
+          <div style="font-size:0.78rem;color:var(--muted);margin-bottom:10px;">Example: AI analyzes a frame and detects…</div>
+          <div class="entity-scene">
+            <div class="entity-obj"><div class="box" style="border-color:var(--blue);">👩</div><div class="elbl" style="color:var(--blue);">person</div></div>
+            <div class="entity-obj"><div class="box" style="border-color:var(--orange);">🐱</div><div class="elbl" style="color:var(--orange);">cat</div></div>
+            <div class="entity-obj"><div class="box" style="border-color:var(--yellow);">🍝</div><div class="elbl" style="color:var(--yellow);">pasta</div></div>
+            <div class="entity-obj"><div class="box" style="border-color:var(--green);">🍳</div><div class="elbl" style="color:var(--green);">pot</div></div>
+          </div>
+          <div class="entity-list">
+            <span class="etag" style="background:#0a1828;border-color:var(--blue);color:var(--blue);">person · 0.98</span>
+            <span class="etag" style="background:#201800;border-color:var(--orange);color:var(--orange);">cat (animal) · 0.94</span>
+            <span class="etag" style="background:#1a1800;border-color:var(--yellow);color:var(--yellow);">pasta (object) · 0.87</span>
+            <span class="etag" style="background:#0a1810;border-color:var(--green);color:var(--green);">pot (object) · 0.79</span>
+          </div>
+        </div>
+        <div class="logic">
+          <div class="logic-title">Logic</div>
+          <ul>
+            <li>Detect all entities with a confidence score above the minimum threshold (configurable, default: 0.5).</li>
+            <li>Each entity is tagged with its category: <strong>person</strong>, <strong>animal</strong> (with species), or <strong>object</strong>.</li>
+            <li>No maximum cap on number of entities per video.</li>
+            <li>Store each entity with its label, category, and confidence score.</li>
+            <li>Use case: a user who repeatedly calls avatars in videos containing cats will have "cat" boosted in their interest profile → more cat-containing videos appear in their feed.</li>
+          </ul>
+        </div>
+        <div class="ex">
+          <div class="ex-lbl">Example — Why entities matter beyond genre</div>
+          Two videos are both genre "Lifestyle". Video A contains: person, cat, book, cozy room. Video B contains: person, gym equipment, sports gear. A user who always engages with videos containing cats gets Video A recommended — not because of genre, but because of the entity match.
+        </div>
+        <div class="err">
+          <div class="err-lbl">Error Handling</div>
+          <ul><li>If no entities are detected above the threshold: store null — no tag. Downstream features must handle this gracefully.</li></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- ④ SETTING -->
+    <div class="sig">
+      <div class="sig-head">
+        <div class="sig-ico">📍</div>
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;"><span class="sig-num">Signal 4</span></div>
+          <div class="sig-title">Setting</div>
+          <div class="sig-subtitle">Indoor / outdoor · Useful for filter UX and context-based personalization</div>
+        </div>
+      </div>
+      <div class="sig-body">
+        <div class="what">
+          Setting describes the <strong>physical environment</strong> shown in the video. The core output is a simple <strong>indoor / outdoor</strong> flag, with an optional scene type for finer detail. This powers filter UX and context-based personalization — a user who consistently watches gym and outdoor content likely prefers active, high-energy settings.
+        </div>
+        <div class="io-split">
+          <div class="io-card io-in"><span class="io-ico">🏠</span><div class="io-name">Indoor</div><div class="io-sub">Inside a building or enclosed / virtual space</div></div>
+          <div class="io-card io-out"><span class="io-ico">🌿</span><div class="io-name">Outdoor</div><div class="io-sub">Open-air or natural environment</div></div>
+        </div>
+        <div class="setting-grid">
+          <div class="setting-section">
+            <div class="ss-title">🏠 Indoor scene types (optional)</div>
+            <div class="scene-tags">
+              <span class="stag stag-in">kitchen</span><span class="stag stag-in">gym</span><span class="stag stag-in">bedroom</span><span class="stag stag-in">living room</span><span class="stag stag-in">studio</span><span class="stag stag-in">office</span><span class="stag stag-in">car</span>
+            </div>
+          </div>
+          <div class="setting-section">
+            <div class="ss-title">🌿 Outdoor scene types (optional)</div>
+            <div class="scene-tags">
+              <span class="stag stag-out">beach</span><span class="stag stag-out">street</span><span class="stag stag-out">park</span><span class="stag stag-out">nature</span><span class="stag stag-out">urban</span><span class="stag stag-out">field</span>
+            </div>
+          </div>
+        </div>
+        <div class="logic">
+          <div class="logic-title">Logic</div>
+          <ul>
+            <li>The required output is the <strong>indoor / outdoor</strong> flag. Scene type is secondary and may be "other".</li>
+            <li>If the background is a virtual or AI-generated environment (common for avatar videos): classify as <em>indoor · studio</em>.</li>
+            <li>If the setting changes across the video: store the dominant setting based on the majority of frames.</li>
+          </ul>
+        </div>
+        <div class="ex">
+          <div class="ex-lbl">Examples</div>
+          Avatar cooking on a visible stovetop → <code>indoor · kitchen</code><br/>
+          Avatar walking on a beach at sunset → <code>outdoor · beach</code><br/>
+          Avatar in front of a solid-color AI-generated background → <code>indoor · studio</code>
+        </div>
+        <div class="err">
+          <div class="err-lbl">Error Handling</div>
+          <ul><li>If indoor/outdoor cannot be determined: store null — no tag.</li></ul>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /sig-list -->
+</div>
+
+<hr/>
+
+<!-- MARKING & ASSIGNING TAGS -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">6</div><h2>Marking &amp; Assigning Tags</h2></div>
+  <div class="sec-desc">How the pipeline turns raw AI confidence scores into stored tags. This is fully automated — no human marking step. The rules below summarize the per-signal logic already defined above, in one place.</div>
+  <div class="rules-wrap">
+    <table class="rules">
+      <thead>
+        <tr>
+          <th>Signal</th>
+          <th>Output shape</th>
+          <th>Selection rule</th>
+          <th>Threshold / limit</th>
+          <th>If nothing qualifies</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="sig-cell"><span class="ic">🎭</span>Genre</td>
+          <td>List of 1–3 labels, each with a confidence score</td>
+          <td>Highest-scoring genres from the 12-genre vocabulary</td>
+          <td>Score must exceed <code>0.3</code> · max <code>3</code> tags</td>
+          <td class="none">Store null — no tag</td>
+        </tr>
+        <tr>
+          <td class="sig-cell"><span class="ic">🎨</span>Mood / Aesthetic</td>
+          <td>List of 1–3 tags, each with a confidence score</td>
+          <td>Strongest mood tags by score; not mutually exclusive</td>
+          <td>Score must exceed <code>0.3</code> · max <code>3</code> tags · fixed vocabulary</td>
+          <td class="none">Store null — no tag</td>
+        </tr>
+        <tr>
+          <td class="sig-cell"><span class="ic">🔍</span>Detected Entities</td>
+          <td>List of <code>{label, category, confidence}</code></td>
+          <td>Every detected entity, tagged person / animal / object</td>
+          <td>Confidence ≥ <code>0.5</code> (configurable) · no max count</td>
+          <td class="none">Store null — no tag</td>
+        </tr>
+        <tr>
+          <td class="sig-cell"><span class="ic">📍</span>Setting</td>
+          <td>Indoor/outdoor flag + optional scene type</td>
+          <td>Dominant environment across frames; virtual bg → <code>indoor · studio</code></td>
+          <td>Indoor/outdoor required · scene type optional (<code>other</code> allowed)</td>
+          <td class="none">Store null — no tag</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="rules-foot">All confidence thresholds and limits are configurable without a code deployment. A tag is only ever assigned from its fixed vocabulary — the pipeline never invents new genre, mood, or scene-type labels.</div>
+  </div>
+</div>
+
+<hr/>
+
+<!-- STORED RECORD -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">7</div><h2>Stored Analysis Record</h2></div>
+  <div class="sec-desc">Every field saved after analysis completes. Accessible by all downstream features without re-triggering analysis.</div>
+  <div class="rec-grid">
+    <div class="rec-field"><div class="rf-name">Video ID</div><div class="rf-desc">Unique video identifier</div></div>
+    <div class="rec-field"><div class="rf-name">Analysis Timestamp</div><div class="rf-desc">When this analysis ran</div></div>
+    <div class="rec-field"><div class="rf-name">Raw AI Output</div><div class="rf-desc">Stored as-is, not discarded</div></div>
+    <div class="rec-field"><div class="rf-name">Genre</div><div class="rf-desc">List + score, max 3</div></div>
+    <div class="rec-field"><div class="rf-name">Mood / Aesthetic Tags</div><div class="rf-desc">List + score, from controlled vocab, max 3</div></div>
+    <div class="rec-field"><div class="rf-name">Detected Entities</div><div class="rf-desc">Label + category + confidence</div></div>
+    <div class="rec-field"><div class="rf-name">Setting</div><div class="rf-desc">Indoor/outdoor + optional scene type</div></div>
+    <div class="rec-field"><div class="rf-name">Analysis Status</div><div class="rf-desc">complete / partial / failed</div></div>
+  </div>
+</div>
+
+<hr/>
+
+<!-- NFR -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">8</div><h2>Non-Functional Requirements</h2></div>
+  <div class="nfr-grid">
+    <div class="nfr"><div class="nfr-ico">⏱️</div><div class="nfr-title">Response Time</div><div class="nfr-desc">Pipeline completes within 5 minutes of video save under normal load.</div></div>
+    <div class="nfr"><div class="nfr-ico">🔁</div><div class="nfr-title">Idempotency</div><div class="nfr-desc">Re-triggering for the same video overwrites the existing record without duplicates.</div></div>
+    <div class="nfr"><div class="nfr-ico">⚙️</div><div class="nfr-title">Configurable Thresholds</div><div class="nfr-desc">Entity confidence threshold and genre score thresholds must be configurable without code deployment.</div></div>
+    <div class="nfr"><div class="nfr-ico">📚</div><div class="nfr-title">Controlled Vocabularies</div><div class="nfr-desc">Genre, mood, and scene-type lists are fixed, versioned vocabularies that downstream features can rely on.</div></div>
+  </div>
+</div>
+
+<hr/>
+
+<!-- OUT OF SCOPE -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">9</div><h2>Out of Scope</h2></div>
+  <div class="lcard">
+    <ol>
+      <li>Genre classification display logic on the Home feed — owned by <span class="tref">CA-2964</span></li>
+      <li>Hashtag suggestion UI for creators — owned by <span class="tref">CA-1008</span></li>
+      <li>Recommendation ranking logic using these signals — separate story</li>
+      <li>Analysis of livestream video content — home videos only</li>
+      <li>Discarded signals — video embedding vector, hook strength, and language detection are explicitly out of scope for this MVP</li>
+    </ol>
+  </div>
+</div>
+
+<!-- OPEN QUESTIONS -->
+<div class="sec">
+  <div class="sec-hd"><div class="nbadge">10</div><h2>Open Questions</h2></div>
+  <div class="lcard">
+    <ol>
+      <li><strong>Batch backfill schedule:</strong> What batch size, cadence, and rate limit for the existing-video backfill job, and how far back does the backlog go? <span class="oq-badge">depends on tech team</span></li>
+      <li><strong>Frame sampling rate:</strong> For a 10s / 24fps clip (≈240 frames), what sampling rate balances cost and accuracy? <span class="oq-badge">depends on tech team</span></li>
+    </ol>
+  </div>
+</div>
+
+<div style="text-align:center;color:var(--muted);font-size:0.8rem;padding:40px 0 24px;">Twomi · CA-3007 · Home Video Content Analysis Pipeline · 4 Signals · MVP</div>
+
+</div>
+</body>
+</html>
