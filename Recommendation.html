@@ -1,0 +1,933 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Home Feed Recommendation Pipeline — MVP</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c63ff;
+      --accent2: #00c9a7;
+      --accent3: #ff6b6b;
+      --accent4: #ffd166;
+      --text: #e8eaf6;
+      --muted: #8b90b8;
+      --tag-bg: #2e3250;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+    }
+
+    /* ── HEADER ── */
+    .hero {
+      background: linear-gradient(135deg, #1a1d27 0%, #12142a 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 48px 40px 36px;
+    }
+    .hero h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, #6c63ff, #00c9a7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .hero .subtitle { color: var(--muted); font-size: 0.95rem; }
+    .meta-tags { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+    .tag {
+      background: var(--tag-bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+
+    /* ── LAYOUT ── */
+    .container { max-width: 960px; margin: 0 auto; padding: 40px 32px; }
+
+    /* ── PIPELINE VISUAL ── */
+    .pipeline {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      margin: 40px 0;
+    }
+    .pipe-step {
+      width: 100%;
+      max-width: 600px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: relative;
+      transition: border-color 0.2s;
+    }
+    .pipe-step:hover { border-color: var(--accent); }
+    .pipe-num {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+    .pipe-content h3 { font-size: 0.95rem; font-weight: 600; }
+    .pipe-content p { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+    .pipe-arrow {
+      width: 2px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 auto;
+      position: relative;
+    }
+    .pipe-arrow::after {
+      content: '';
+      position: absolute;
+      bottom: -5px;
+      left: 50%;
+      transform: translateX(-50%);
+      border-left: 5px solid transparent;
+      border-right: 5px solid transparent;
+      border-top: 6px solid var(--border);
+    }
+
+    .c1 { background: #3b2fa0; color: #a89fff; }
+    .c2 { background: #1a4a3a; color: #00c9a7; }
+    .c3 { background: #5c1e1e; color: #ff8a8a; }
+    .c4 { background: #4a3500; color: #ffd166; }
+    .c5 { background: #1a2f4a; color: #60aeff; }
+    .c6 { background: #3a1e4a; color: #c084fc; }
+
+    /* ── SECTION ── */
+    .section { margin: 48px 0; }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .step-badge {
+      padding: 4px 14px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .section h2 { font-size: 1.25rem; font-weight: 700; }
+    .section-desc { color: var(--muted); font-size: 0.9rem; margin-bottom: 20px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-bottom: 14px;
+    }
+    .card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 10px; color: var(--accent2); }
+
+    /* ── TABLE ── */
+    .tbl { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+    .tbl th {
+      text-align: left;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .tbl td { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+    .tbl tr:last-child td { border-bottom: none; }
+    .tbl tr:hover td { background: var(--surface2); }
+
+    /* ── FORMULA BOX ── */
+    .formula {
+      background: #0d1526;
+      border: 1px solid #2a3a6a;
+      border-radius: 10px;
+      padding: 18px 22px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.9rem;
+      color: #90b8ff;
+      margin: 14px 0;
+      line-height: 1.8;
+    }
+    .formula .highlight { color: #ffd166; }
+    .formula .comment { color: var(--muted); font-style: italic; }
+
+    /* ── EXAMPLE BOX ── */
+    .example {
+      background: #111c1a;
+      border-left: 3px solid var(--accent2);
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      margin: 14px 0;
+      font-size: 0.88rem;
+    }
+    .example .ex-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent2);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    /* ── SIGNAL GRID ── */
+    .signal-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 14px 0;
+    }
+    .signal-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .signal-card .slabel {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .signal-card ul { padding-left: 16px; font-size: 0.88rem; }
+    .signal-card li { margin-bottom: 4px; }
+
+    /* ── SCORE EXAMPLE TABLE ── */
+    .score-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin: 14px 0;
+    }
+    .score-card {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+    .score-card .sc-title { font-weight: 600; font-size: 0.88rem; margin-bottom: 12px; color: var(--accent4); }
+    .score-card .sc-row { display: flex; justify-content: space-between; font-size: 0.85rem; padding: 4px 0; border-bottom: 1px solid var(--border); }
+    .score-card .sc-row:last-child { border-bottom: none; font-weight: 700; color: var(--accent2); font-size: 0.92rem; }
+    .score-card .sc-label { color: var(--muted); }
+
+    /* ── BOOST CARDS ── */
+    .boost-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 14px 0; }
+    .boost-card {
+      border-radius: 12px;
+      padding: 20px;
+      border: 1px solid;
+    }
+    .boost-card.purple { background: #1e1535; border-color: #5b3fa0; }
+    .boost-card.orange { background: #1e1510; border-color: #9a6a00; }
+    .boost-card h4 { font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; }
+    .boost-card.purple h4 { color: #b39dff; }
+    .boost-card.orange h4 { color: #ffd166; }
+    .boost-card p, .boost-card li { font-size: 0.85rem; color: var(--muted); }
+    .boost-card ul { padding-left: 16px; }
+    .boost-card li { margin-bottom: 4px; }
+
+    /* ── ROADMAP ── */
+    .roadmap { display: flex; gap: 12px; flex-wrap: wrap; margin: 14px 0; }
+    .rm-item {
+      flex: 1;
+      min-width: 160px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+    }
+    .rm-item .rm-phase { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent); margin-bottom: 6px; }
+    .rm-item .rm-label { font-size: 0.78rem; font-weight: 600; margin-bottom: 4px; }
+    .rm-item .rm-desc { font-size: 0.78rem; color: var(--muted); }
+
+    /* ── BADGE PILL ── */
+    .pill {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 12px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .pill-green { background: #0d2e1e; color: #00c9a7; border: 1px solid #00c9a7; }
+    .pill-red   { background: #2e0d0d; color: #ff6b6b; border: 1px solid #ff6b6b; }
+    .pill-blue  { background: #0d1e2e; color: #60aeff; border: 1px solid #60aeff; }
+    .pill-purple { background: #1e0d2e; color: #c084fc; border: 1px solid #c084fc; }
+
+    /* ── DIVIDER ── */
+    .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+    /* ── WEIGHT BAR ── */
+    .weight-row { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; font-size: 0.87rem; }
+    .weight-label { width: 200px; color: var(--muted); }
+    .weight-bar-bg { flex: 1; height: 8px; background: var(--border); border-radius: 4px; }
+    .weight-bar { height: 100%; border-radius: 4px; }
+    .weight-val { width: 36px; text-align: right; font-weight: 600; font-size: 0.82rem; }
+
+    @media (max-width: 640px) {
+      .hero { padding: 32px 20px 24px; }
+      .container { padding: 24px 16px; }
+      .signal-grid, .score-compare, .boost-grid, .boost-grid { grid-template-columns: 1fr; }
+      .hero h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>Home Feed Recommendation Pipeline</h1>
+  <div class="subtitle">Twomi · MVP V1 · June 2026</div>
+  <div class="meta-tags">
+    <span class="tag">Home Screen</span>
+    <span class="tag">Recommendation</span>
+    <span class="tag">AIA Link</span>
+    <span class="tag">MVP</span>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- PIPELINE OVERVIEW -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Pipeline Overview</h2>
+    </div>
+    <p class="section-desc">When a user opens the Home feed, the system runs through 6 sequential steps to determine which videos to surface and in what order.</p>
+
+    <div class="pipeline">
+      <div class="pipe-step">
+        <div class="pipe-num c1">1</div>
+        <div class="pipe-content">
+          <h3>User Interest Profile</h3>
+          <p>Determine what the user likes — genres, region, creators</p>
+        </div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-num c2">2</div>
+        <div class="pipe-content">
+          <h3>Filtering</h3>
+          <p>Remove blocked/reported videos + recently-seen home videos (cooldown)</p>
+        </div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-num c3">3</div>
+        <div class="pipe-content">
+          <h3>Candidate Pool</h3>
+          <p>Collect the published home videos that survive filtering</p>
+        </div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-num c4">4</div>
+        <div class="pipe-content">
+          <h3>Scoring</h3>
+          <p>Calculate a score for each video: Relevance + Popularity + Freshness</p>
+        </div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-num c5">5</div>
+        <div class="pipe-content">
+          <h3>Boosts</h3>
+          <p>Apply AIA Link boost and Featured boost</p>
+        </div>
+      </div>
+      <div class="pipe-arrow"></div>
+      <div class="pipe-step">
+        <div class="pipe-num c6">6</div>
+        <div class="pipe-content">
+          <h3>Diversity &amp; Freshness Injection</h3>
+          <p>Prevent repetition, inject exploration content, cap per-creator</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- STEP 1 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="step-badge" style="background:#3b2fa0;color:#a89fff;">Step 1</span>
+      <h2>User Interest Profile</h2>
+    </div>
+    <p class="section-desc">Before searching for videos, the system builds a picture of what the user likes. This profile is the foundation every other step relies on.</p>
+
+    <div class="signal-grid">
+      <div class="signal-card">
+        <div class="slabel">Profile Signals</div>
+        <ul>
+          <li><strong>Genres</strong> — selected by the user in profile (e.g. Music, Dance)</li>
+          <li><strong>Region</strong> — taken automatically from the user's account/location, <strong>not chosen</strong> (e.g. VN, US)</li>
+        </ul>
+      </div>
+      <div class="signal-card">
+        <div class="slabel">Implicit Signals — Inferred from behavior</div>
+        <ul>
+          <li><strong>Favorited avatars</strong> → preferred avatars &amp; content <span class="pill pill-green">Strong</span></li>
+          <li><strong>Called avatars</strong> → avatars you engage with <span class="pill pill-green">Very strong</span></li>
+          <li><strong>Watched livestreams</strong> → avatars you tune into <span class="pill pill-green">Strong</span></li>
+          <li><strong>Completed videos (&gt; 50%)</strong> → content you finish <span class="pill pill-green">Strong</span></li>
+          <li><strong>Similarity</strong> → mood, detected entities &amp; settings of videos you called/watched <span class="pill pill-blue">Content</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card">
+      <h4>Cold Start — New Users</h4>
+      <p>Users with no behavior history: use genres from their profile as the only seed. If no genres selected, show top trending content (highest platform-wide Popularity Score).</p>
+      <p style="margin-top:8px;">After the first favorite or call, the interest profile updates immediately.</p>
+    </div>
+
+    <div class="card">
+      <h4>Interest Profile — established by recent activity (not by time window)</h4>
+      <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">The profile is built from fixed-size lists of the user's most recent activity. No time decay — recency is handled by list size: a new event pushes out the oldest (FIFO).</p>
+      <table class="tbl" style="margin-top:6px;">
+        <thead><tr><th>Source</th><th>Keep (MVP, tunable)</th></tr></thead>
+        <tbody>
+          <tr><td>Latest favorited avatars</td><td><strong>5</strong></td></tr>
+          <tr><td>Latest avatars called</td><td><strong>5</strong></td></tr>
+          <tr><td>Latest avatars whose livestream was watched</td><td><strong>5</strong></td></tr>
+          <tr><td>Latest completed videos (watched &gt; 50%)</td><td><strong>10</strong></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.82rem;color:var(--muted);margin-top:10px;">These lists <em>are</em> the Similarity engaged set and the seed for genre/region inference. The profile is rebuilt — and the feed re-scored — <strong>every 20 videos</strong> (one feed batch), not on every single event. Until the lists have any entries, the user stays in cold-start (declared genres + trending).</p>
+    </div>
+
+    <div class="card">
+      <h4>Engaged-set profile — top moods / entities / setting</h4>
+      <p style="font-size:0.86rem;color:var(--muted);margin-bottom:10px;">Pool all videos from the lists above (favorited + called + watched + completed), <strong>dedupe</strong> → engaged set E. Rank each attribute by <strong>frequency</strong> over E (all videos weighted equally — the fixed list size already keeps it recent, no time decay) and keep only the top ones:</p>
+      <table class="tbl">
+        <thead><tr><th>Attribute</th><th>How the profile is built — by appearance frequency</th><th>Keep</th></tr></thead>
+        <tbody>
+          <tr><td>Mood</td><td>Rank moods by appearance frequency over E (<code>w = videos with that mood / |E|</code>), keep the most frequent → e.g. calm 0.5, happy 0.5, funny 0.3</td><td>top <strong>3</strong></td></tr>
+          <tr><td>Detected entities</td><td>Rank entities by appearance frequency over E, keep the most frequent → e.g. people 0.8, animals 0.4</td><td>top <strong>2</strong></td></tr>
+          <tr><td>Setting</td><td>Take the most frequent (dominant) value with its share → e.g. indoor 0.6</td><td>top <strong>1</strong></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:0.8rem;color:var(--muted);margin-top:10px;">The kept frequencies are the weights <code>w</code> the Similarity step (4.1) uses (unchanged) — still capped at <strong>0.9</strong>. Keeping only top-3 / top-2 / 1 makes the profile small and focused on what the user actually favors; with a larger mood/entity vocabulary this trims to the real preferences. List sizes are tunable.</p>
+    </div>
+
+    <div class="example">
+      <div class="ex-label">Example — Returning User</div>
+      User B, last 2 weeks: favorited avatars [3 Music, 2 Lifestyle], called avatars [3 Music, 1 Comedy], watched 2 Music livestreams, completed 8 videos (mostly Music).<br/><br/>
+      → Interest Profile: <code style="color:#00c9a7;">genres: [Music (dominant), Lifestyle, Comedy] · region: VN · engaged_set: recent avatars/videos → feeds Similarity</code>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- STEP 2 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="step-badge" style="background:#1a4a3a;color:#00c9a7;">Step 2</span>
+      <h2>Filtering</h2>
+    </div>
+    <p class="section-desc">Before pooling candidates, apply per-user exclusions. Two kinds of removal: <strong>permanent hard filters</strong> (table below) and a <strong>Seen Cooldown</strong> — a video the user has just seen is hidden for a fixed window, then becomes eligible again.</p>
+
+    <h4 style="font-size:0.85rem;color:var(--accent2);margin-bottom:10px;">A. Permanent hard filters</h4>
+    <table class="tbl">
+      <thead>
+        <tr>
+          <th>Condition</th>
+          <th>Action</th>
+          <th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>User has blocked the creator</td>
+          <td>Remove all of that creator's videos</td>
+          <td>User explicitly blocked</td>
+        </tr>
+        <tr>
+          <td>User reported creator / marked "Not interested"</td>
+          <td>Remove all of that creator's videos</td>
+          <td>User does not want this content</td>
+        </tr>
+        <tr>
+          <td>User reported a specific video</td>
+          <td>Remove that video only</td>
+          <td>User flagged the content</td>
+        </tr>
+        <tr>
+          <td>Creator has blocked the user</td>
+          <td>Remove all of that creator's videos</td>
+          <td>Creator restricted access</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h4 style="font-size:0.85rem;color:var(--accent2);margin:24px 0 10px;">B. Seen Cooldown — hide recently-seen, then re-eligible (home videos only)</h4>
+    <p class="section-desc" style="margin-bottom:14px;">Once a <strong>home video</strong> has been seen, it is hidden for that user for a fixed <strong>cooldown window</strong> — to avoid back-to-back repetition. After the window passes, the video returns to the candidate pool at its normal Score. No permanent removal.</p>
+
+    <div class="formula">
+COOLDOWN = <span class="highlight">48h</span>  (default, tunable)
+
+<span class="comment">video is excluded while: (now − last_seen_ts) ≤ COOLDOWN</span>
+<span class="comment">after that it is eligible again at full Score</span>
+    </div>
+
+    <table class="tbl" style="margin-top:14px;">
+      <thead>
+        <tr><th>Event</th><th>Definition</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Display</td>
+          <td>Home video card was shown in the user's feed</td>
+          <td>Update <code>last_seen_ts</code> → start/refresh cooldown</td>
+        </tr>
+        <tr>
+          <td>Watch</td>
+          <td>User watched a home video</td>
+          <td>Update <code>last_seen_ts</code> → start/refresh cooldown</td>
+        </tr>
+        <tr>
+          <td>Call</td>
+          <td>User called a home video's avatar</td>
+          <td>Update <code>last_seen_ts</code> → start/refresh cooldown</td>
+        </tr>
+        <tr>
+          <td>Watch (livestream)</td>
+          <td>User watched a host's livestream</td>
+          <td>Update <code>last_seen_ts</code> on the <strong>host's home video</strong> → start/refresh its cooldown</td>
+        </tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.82rem;color:var(--muted);margin-top:10px;">Re-seeing a video during its cooldown refreshes <code>last_seen_ts</code>, so the window restarts from the most recent view.</p>
+
+    <div class="card" style="margin-top:16px;background:#111c1a;border-color:var(--accent2);">
+      <h4 style="color:var(--accent2);">Exception — the livestream itself has no cooldown</h4>
+      <p style="font-size:0.86rem;color:var(--muted);">A <strong>livestream</strong> is never put on cooldown — live content is re-joinable and ends on its own, so the stream stays eligible while live. But watching a livestream <strong>does</strong> start the cooldown on the <strong>host avatar's home video</strong> (you just saw that avatar's content), so it won't immediately repeat in the feed. The cooldown target is always a <strong>home video</strong>, never the live stream.</p>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- STEP 3 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="step-badge" style="background:#5c1e1e;color:#ff8a8a;">Step 3</span>
+      <h2>Candidate Pool</h2>
+    </div>
+    <p class="section-desc">After filtering, the candidate pool is the published home videos that survive the hard filters and are not in cooldown. Genre pre-filtering is intentionally skipped here — that happens in Scoring. Keeping the pool wide ensures the Diversity step in Step 6 has enough content to pull from.</p>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- STEP 4 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="step-badge" style="background:#4a3500;color:#ffd166;">Step 4</span>
+      <h2>Scoring</h2>
+    </div>
+    <p class="section-desc">Each video receives a score. Videos are sorted highest to lowest. The score has three components. The candidate pool is <strong>re-scored every 20 videos</strong> (one feed batch), using the freshly rebuilt Interest Profile.</p>
+
+    <div class="formula">
+      Score = <span class="highlight">Relevance Score</span> + <span class="highlight">Popularity Score</span> + <span class="highlight">Freshness Boost</span>
+    </div>
+
+    <!-- RELEVANCE -->
+    <div class="card">
+      <h4>4.1 — Relevance Score &nbsp;<span style="color:var(--muted);font-weight:400;font-size:0.82rem;">Range: 0 – 1</span></h4>
+      <p style="font-size:0.88rem;color:var(--muted);margin-bottom:12px;">How well this video matches the user — three signals: <strong>Genre</strong> (declared), <strong>Region</strong> (from account, auto), <strong>Similarity</strong> (behavioral).</p>
+      <div class="formula">
+Relevance = <span class="highlight">0.45</span> × Genre Match
+          + <span class="highlight">0.15</span> × Region Match
+          + <span class="highlight">0.40</span> × Similarity
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="weight-row">
+          <span class="weight-label">Genre Match</span>
+          <div class="weight-bar-bg"><div class="weight-bar" style="width:45%;background:var(--accent);"></div></div>
+          <span class="weight-val">45%</span>
+        </div>
+        <div class="weight-row">
+          <span class="weight-label">Region Match</span>
+          <div class="weight-bar-bg"><div class="weight-bar" style="width:15%;background:var(--accent2);"></div></div>
+          <span class="weight-val">15%</span>
+        </div>
+        <div class="weight-row">
+          <span class="weight-label">Similarity</span>
+          <div class="weight-bar-bg"><div class="weight-bar" style="width:40%;background:var(--accent3);"></div></div>
+          <span class="weight-val">40%</span>
+        </div>
+      </div>
+
+      <p style="font-size:0.8rem;color:var(--muted);margin:16px 0 8px;">Each signal uses the same format below — <strong>Measures · Scoring · Example</strong>. <strong>Soft-OR</strong> <code>1 − ∏(1 − x)</code> is used to fold <em>multiple tags into one score</em>: Genre folds its matched genre tags this way; inside Similarity, mood and entities fold their tags this way too. (Similarity then averages its three attributes — see below.)</p>
+
+      <!-- GENRE -->
+      <div class="card" style="background:var(--surface2);">
+        <h4 style="color:var(--accent);">Genre Match <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">· weight 0.45 · declared</span></h4>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Measures —</strong> the video's genre tags (≤3) against the user's genres (1 dominant + secondaries).</p>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Scoring —</strong> each matched tag has weight w = dominant <strong>0.9</strong> / secondary <strong>0.7</strong> / no-match 0, combined by soft-OR: <code>Genre = 1 − ∏(1 − w)</code>. Breadth rewarded with diminishing returns; dominant is &lt; 1.0 on purpose so multiple matches can compete (all tunable).</p>
+        <p style="font-size:0.85rem;"><strong>Example —</strong> user: Music (dom), {Dance, Comedy} (sec). Video [Dance, Comedy, Fitness] → 1 − 0.3² = <strong>0.91</strong>; video matching Music only → <strong>0.9</strong> → the broader match wins.</p>
+      </div>
+
+      <!-- REGION -->
+      <div class="card" style="background:var(--surface2);">
+        <h4 style="color:var(--accent2);">Region Match <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">· weight 0.15 · from account (auto)</span></h4>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Measures —</strong> the video's region against the user's region (auto-detected from account, not chosen).</p>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Scoring —</strong> match → <strong>1.0</strong> · different → <strong>0.0</strong>. Soft signal: a mismatch lowers the score but never removes the video, so cross-region content can still surface.</p>
+        <p style="font-size:0.85rem;"><strong>Example —</strong> user VN. Video VN → 1.0 · video US → 0.0 (still shown).</p>
+      </div>
+
+      <!-- SIMILARITY -->
+      <div class="card" style="background:var(--surface2);">
+        <h4 style="color:var(--accent3);">Similarity <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">· weight 0.40 · behavioral</span></h4>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Measures —</strong> how much the video resembles your <strong>engaged set</strong> (recent favorited / called / watched / completed videos) on three attributes: <strong>mood</strong> &amp; <strong>detected entities</strong> (each can have several tags) and <strong>setting</strong> (single value: indoor / outdoor). Captures <em>revealed</em> preference.</p>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Scoring — two steps</strong> (engaged-set frequencies come from Step 1).<br/>
+        ① Per attribute. Mood &amp; entities have multiple tags → fold them with <strong>soft-OR</strong> over the video's tags, where each tag's weight <code>w</code> = its frequency in your engaged set, <strong>capped at w_max = 0.9</strong> so no single tag alone saturates the attribute to 1.0 (same idea as Genre's dominant 0.9): <code>moodSim = 1 − ∏(1−w)</code>, same for <code>entitySim</code>. Setting is a single value → <code>settingSim = </code> the proportion of your engaged set with that setting (no soft-OR needed).<br/>
+        ② Combine the three by <strong>arithmetic mean</strong>: <code>Similarity = (moodSim + entitySim + settingSim) / 3</code>. Cold start (empty engaged set) → 0.</p>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Example —</strong> engaged set: moods {calm 0.6, warm 0.3}, entities {guitar 0.5, sofa 0.4}, setting {indoor 0.7, outdoor 0.3}. Video V: moods {calm, energetic}, entities {guitar, mic}, setting indoor.<br/>
+        moodSim = 1 − (1−0.6)(1−0) = <strong>0.6</strong> · entitySim = 1 − (1−0.5)(1−0) = <strong>0.5</strong> · settingSim = <strong>0.7</strong> (share of E that is indoor)<br/>
+        Similarity = (0.6 + 0.5 + 0.7) / 3 = <strong style="color:#ffd166;">0.60</strong></p>
+        <p style="font-size:0.78rem;color:var(--muted);">MVP uses this attribute proxy; <span class="pill pill-purple" style="font-size:0.62rem;">V3</span> upgrades to cosine over content embeddings (same weight).</p>
+      </div>
+    </div>
+
+    <!-- POPULARITY -->
+    <div class="card">
+      <h4>4.2 — Popularity Score &nbsp;<span style="color:var(--muted);font-weight:400;font-size:0.82rem;">Range: 0 – 1</span></h4>
+      <p style="font-size:0.88rem;color:var(--muted);margin-bottom:12px;">How much the broader platform engages with this video — independent of the viewer's personal taste. Three signals: <strong>Favorites</strong> (retention), <strong>Call-through Rate</strong> (Home conversion), <strong>Completion</strong> (content quality).</p>
+      <div class="formula">
+Popularity = <span class="highlight">0.40</span> × norm(Favorites)
+           + <span class="highlight">0.40</span> × Call-through Rate
+           + <span class="highlight">0.20</span> × Completion Rate
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="weight-row">
+          <span class="weight-label">Favorites</span>
+          <div class="weight-bar-bg"><div class="weight-bar" style="width:40%;background:var(--accent);"></div></div>
+          <span class="weight-val">40%</span>
+        </div>
+        <div class="weight-row">
+          <span class="weight-label">Call-through Rate</span>
+          <div class="weight-bar-bg"><div class="weight-bar" style="width:40%;background:var(--accent2);"></div></div>
+          <span class="weight-val">40%</span>
+        </div>
+        <div class="weight-row">
+          <span class="weight-label">Completion Rate</span>
+          <div class="weight-bar-bg"><div class="weight-bar" style="width:20%;background:var(--accent3);"></div></div>
+          <span class="weight-val">20%</span>
+        </div>
+      </div>
+
+      <p style="font-size:0.8rem;color:var(--muted);margin:16px 0 8px;">Each signal uses the same format below — <strong>Measures · Scoring · Example</strong>. Only <strong>Favorites</strong> is normalised to the candidate pool (it's a raw count); the two rates are already in 0–1 and used as-is.</p>
+
+      <!-- FAVORITES -->
+      <div class="card" style="background:var(--surface2);">
+        <h4 style="color:var(--accent);">Favorites <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">· weight 0.40 · retention</span></h4>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Measures —</strong> how many distinct users saved this avatar (intent to keep / come back).</p>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Scoring —</strong> <code>Favorites = COUNT(DISTINCT user_id)</code> (unique users → resists save/unsave spam), then normalise to the pool: <code>norm = Favorites / max(Favorites in pool)</code>. Range 0–1.</p>
+        <p style="font-size:0.85rem;"><strong>Example —</strong> video has 200 unique favorites, pool max = 500 → <code>200 / 500</code> = <strong>0.40</strong>.</p>
+      </div>
+
+      <!-- CALL-THROUGH -->
+      <div class="card" style="background:var(--surface2);">
+        <h4 style="color:var(--accent2);">Call-through Rate <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">· weight 0.40 · Home conversion</span></h4>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Measures —</strong> how well this Home video converts views into calls.</p>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Scoring —</strong> <code>CTR = calls_from_home / Home views</code> (raw, ≤ 1). Numerator counts only calls with <code>entry_point='home'</code> &amp; <code>source_video_id = X</code>; denominator = Home impressions of X. Both scoped to Home + this video so the ratio can't exceed 1. Needs <code>entry_point</code> &amp; <code>source_video_id</code> logged on call events.</p>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Example —</strong> 1,000 Home views, 200 calls from Home → <code>200 / 1,000</code> = <strong>0.20</strong>.</p>
+        <p style="font-size:0.78rem;color:var(--muted);"><strong>Trade-offs:</strong> no call depth (5-sec = 5-min call), no anti-spam on repeat callers (swap to <code>distinct callers_from_home</code> if needed), calls from Favorites/Search excluded by design.</p>
+      </div>
+
+      <!-- COMPLETION -->
+      <div class="card" style="background:var(--surface2);">
+        <h4 style="color:var(--accent3);">Completion Rate <span style="color:var(--muted);font-weight:400;font-size:0.8rem;">· weight 0.20 · content quality</span></h4>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Measures —</strong> how fully people watch the (≤10s) Home video — a pure content-quality signal at the video level.</p>
+        <p style="font-size:0.85rem;margin-bottom:4px;"><strong>Scoring —</strong> <code>Completion = Σ min(watch_i, L) / (views × L)</code>, with <code>L = min(video_length, 10s)</code>. Watching to the 10s cap = 1.0; bouncing after 2s ≈ 0.2. Raw 0–1.</p>
+        <p style="font-size:0.85rem;"><strong>Example —</strong> 1,000 views, total capped watch-time = 6,800s, L = 10 → <code>6,800 / (1,000 × 10)</code> = <strong>0.68</strong>.</p>
+      </div>
+
+      <div class="example">
+        <div class="ex-label">Worked example — full Popularity (Favorites_max in pool = 500)</div>
+        Video B: 200 favorites → 0.40 · CTR 0.20 · completion 0.68<br/>
+        Popularity(B) = 0.40×0.40 + 0.40×0.20 + 0.20×0.68 = 0.160 + 0.080 + 0.136 = <strong style="color:#ffd166;">0.376</strong><br/><br/>
+        Video A: 450 favorites → 0.90 · CTR 0.30 · completion 0.80<br/>
+        Popularity(A) = 0.40×0.90 + 0.40×0.30 + 0.20×0.80 = 0.360 + 0.120 + 0.160 = <strong style="color:#ffd166;">0.640</strong>
+      </div>
+    </div>
+
+    <!-- FRESHNESS -->
+    <div class="card">
+      <h4>4.3 — Freshness Boost</h4>
+      <p style="font-size:0.88rem;color:var(--muted);margin-bottom:12px;">Give new videos a chance before they have engagement data.</p>
+      <div class="formula">
+Freshness Boost = <span class="highlight">+0.3</span>   if (now − first_publish_ts) ≤ FRESH_WINDOW
+               =    <span class="highlight">0</span>    if older than FRESH_WINDOW
+
+FRESH_WINDOW = 24h  (default)
+             = 48h  if creator has AIA Link  (see Step 5)
+      </div>
+      <p style="font-size:0.82rem;color:var(--muted);margin-top:8px;">Simple on/off in MVP — no decay curve. Uses the <strong>immutable <code>first_publish_ts</code></strong> so deleting and re-posting a video does <em>not</em> reset freshness (anti-abuse).</p>
+
+      <div class="example">
+        <div class="ex-label">Worked example — Freshness</div>
+        At <strong>T = 10h</strong> after first publish → 10h ≤ 24h → Boost = <strong>+0.3</strong> (any creator).<br/>
+        At <strong>T = 30h</strong>, no AIA → 30h &gt; 24h → Boost = <strong>0</strong>.<br/>
+        At <strong>T = 30h</strong>, creator has AIA Link → window = 48h, 30h ≤ 48h → Boost = <strong>+0.3</strong>.<br/>
+        Deleted at 20h &amp; re-posted → <code>first_publish_ts</code> unchanged → freshness still counts from the original publish → <strong>no reset</strong>.
+      </div>
+    </div>
+
+    <!-- SCORE EXAMPLE -->
+    <div class="card">
+      <h4>4.4 — End-to-end Scoring Example &nbsp;<span style="color:var(--muted);font-weight:400;font-size:0.8rem;">base Score, before Step 5 boosts</span></h4>
+      <p style="font-size:0.85rem;color:var(--muted);margin-bottom:14px;">Same Video A &amp; B as the 4.2 example (Popularity 0.640 / 0.376). User likes Music and keeps calling/watching Music-style content.</p>
+      <div class="score-compare">
+        <div class="score-card">
+          <div class="sc-title">Video A — Music (dominant) · matches engaged set · Posted 10h ago</div>
+          <div class="sc-row"><span class="sc-label">Relevance = 0.45·0.9 + 0.15·1.0 + 0.40·0.75</span><span>0.855</span></div>
+          <div class="sc-row"><span class="sc-label">Popularity (from 4.2)</span><span>0.640</span></div>
+          <div class="sc-row"><span class="sc-label">Freshness (10h ≤ 24h)</span><span>+0.30</span></div>
+          <div class="sc-row"><span class="sc-label">Base Score</span><span>1.795</span></div>
+        </div>
+        <div class="score-card">
+          <div class="sc-title">Video B — Dance · unlike engaged set · Posted 3 days ago</div>
+          <div class="sc-row"><span class="sc-label">Relevance = 0.45·0.7 + 0.15·1.0 + 0.40·0.20</span><span>0.545</span></div>
+          <div class="sc-row"><span class="sc-label">Popularity (from 4.2)</span><span>0.376</span></div>
+          <div class="sc-row"><span class="sc-label">Freshness (3 days &gt; 24h)</span><span>0</span></div>
+          <div class="sc-row"><span class="sc-label">Base Score</span><span>0.921</span></div>
+        </div>
+      </div>
+      <p style="font-size:0.83rem;color:var(--muted);margin-top:8px;">Video A (1.795) ranks above Video B (0.921) — strong genre + content (Similarity) match and it's new — even though B is more popular platform-wide. Step 5 then adds boosts on top (Video A with AIA Link → 1.945).</p>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- STEP 5 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="step-badge" style="background:#1a2f4a;color:#60aeff;">Step 5</span>
+      <h2>Boosts</h2>
+    </div>
+    <p class="section-desc">Applied right after Scoring, on top of the organic Score (additive model). The Diversity &amp; Freshness Injection step (Step 6) then runs on these boosted scores.</p>
+
+    <div class="boost-grid">
+      <div class="boost-card purple">
+        <h4>AIA Link Boost</h4>
+        <p style="font-size:0.8rem;color:var(--muted);margin-bottom:8px;">Eligibility is binary: <code>AIA_eligible = (AIA account linked)</code>. The old AIA Partner Badge (variants A/B/C) was removed 2026-05-24 — the boost now keys off the AIA link only.</p>
+        <p style="margin-bottom:10px;">Two separate benefits:</p>
+        <ul>
+          <li style="margin-bottom:8px;"><strong style="color:#b39dff;">Extended Freshness Window</strong><br/>No AIA: Freshness +0.3 applies for 24h.<br/>With AIA Link: Freshness +0.3 applies for <strong>48h</strong>.</li>
+          <li><strong style="color:#b39dff;">Permanent Score Boost</strong><br/>+0.15 added to every video from this creator. No time limit.</li>
+        </ul>
+        <div class="example" style="margin-top:12px;">
+          <div class="ex-label">Impact at T = 30 hours after posting</div>
+          No AIA → Freshness = 0 (expired at 24h)<br/>
+          With AIA Link → Freshness = +0.3 (48h window) + permanent +0.15 = <strong style="color:#b39dff;">+0.45 advantage</strong>
+        </div>
+      </div>
+
+      <div class="boost-card orange">
+        <h4>Featured Boost</h4>
+        <ul>
+          <li>Assigned manually by Ops team via CMS (CA-969)</li>
+          <li>Boost value: <strong>+0.2 to +1.0</strong> (added to Score)</li>
+          <li>Default when not featured: 0</li>
+          <li>Maximum 3 videos featured simultaneously (configurable)</li>
+          <li>Videos can be tagged with a campaign or event label for tracking</li>
+          <li>Additive: <code>Score_final = Score_organic + AIA_permanent + Featured</code> — does not swallow other boosts</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
+      <h4>End-to-end Score — additive (Video A, Relevance 0.855 &amp; Popularity 0.640 from 4.1/4.2)</h4>
+      <div class="formula">
+With AIA Link, posted 10h ago:
+Score = 0.855 (Relevance) + 0.640 (Popularity) + 0.30 (Freshness, 48h window) + 0.15 (AIA permanent) = <span class="highlight">1.945</span>
+
+Same video, no AIA, at T = 30h:
+Score = 0.855 + 0.640 + 0 (freshness expired at 24h) + 0 = <span class="highlight">1.495</span>   <span class="comment">→ 0.45 lower</span>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- STEP 6 -->
+  <div class="section">
+    <div class="section-header">
+      <span class="step-badge" style="background:#3a1e4a;color:#c084fc;">Step 6</span>
+      <h2>Diversity &amp; Freshness Injection</h2>
+    </div>
+    <p class="section-desc">Pure score-based ranking (including boosts) creates repetition and filter bubbles. This step ensures variety in the final batch.</p>
+
+    <div class="card">
+      <h4>Per-Creator Cap</h4>
+      <p style="font-size:0.88rem;">Maximum <strong>3 videos from the same creator</strong> per batch of 20 videos. If Creator X has the top 8 scores, only their top 3 are kept. The remaining slots are filled by videos from other creators.</p>
+    </div>
+
+    <div class="card">
+      <h4>Exploration Injection</h4>
+      <p style="font-size:0.88rem;">At least <strong>10% of videos</strong> in each feed batch must come from genres outside the user's preferred genres.</p>
+      <div class="example" style="margin-top:10px;">
+        <div class="ex-label">Example</div>
+        User prefers Music and Dance. In a batch of 20 videos:<br/>
+        → 18 videos from Music, Dance, or avatars matching the user's taste (exploitation)<br/>
+        → 2 videos from Comedy, Lifestyle, Travel (exploration)
+      </div>
+    </div>
+
+  </div>
+
+  <hr class="divider" />
+
+  <!-- LIVESTREAMS -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Livestreams</h2>
+    </div>
+    <p class="section-desc">Livestreams don't have favorites/completion data of their own, so they aren't scored like home videos. Instead a livestream <strong>inherits its host avatar's Score</strong> and adds a Freshness Boost (a live stream is the freshest content there is). Because the host's Score already carries your Relevance to that avatar's content (genre, region, Similarity), a stream whose host matches your taste naturally rises to the top — no manual "Top 3" rule needed. The live stream itself is <strong>not</strong> subject to the Seen Cooldown (Step 2) and stays eligible while live; watching it does, however, start the cooldown on the host's <strong>home video</strong>.</p>
+
+    <div class="formula">
+Single livestream Score = <span class="highlight">Host avatar's Score</span> + Freshness Boost
+Multi livestream Score  = <span class="highlight">max(Host avatars' Scores)</span> + Freshness Boost
+
+<span class="comment">Host avatar's Score = the Score that avatar's home video earns for this user (Relevance + Popularity)</span>
+<span class="comment">Freshness Boost = +0.3 while live (AIA Link creators: extended 48h window, see Step 5)</span>
+    </div>
+
+    <div class="signal-grid" style="margin-top:14px;">
+      <div class="signal-card">
+        <div class="slabel">Single livestream — 1 host</div>
+        <p style="font-size:0.85rem;">Score = that host avatar's Score + Freshness Boost.</p>
+      </div>
+      <div class="signal-card">
+        <div class="slabel">Multi livestream — 2+ hosts (discussion format)</div>
+        <p style="font-size:0.85rem;">Score = the <strong>highest-scoring</strong> host avatar's Score + Freshness Boost, so a strong host can carry the stream. Ties broken toward more hosts.</p>
+      </div>
+    </div>
+
+    <div class="example">
+      <div class="ex-label">Example</div>
+      You've called Avatar A a lot (its home video scores 0.9 for you) and have no history with Avatar B (scores 0.4).<br/>
+      → <strong>Single</strong> livestream hosted by A = 0.9 + 0.3 = <strong style="color:#ffd166;">1.2</strong><br/>
+      → <strong>Multi</strong> livestream hosted by A &amp; B = max(0.9, 0.4) + 0.3 = <strong style="color:#ffd166;">1.2</strong>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- SCOPE SEPARATION -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Scope — Home Recommendation ≠ Standalone / Explore cards</h2>
+    </div>
+    <p class="section-desc">The scoring in this doc ranks the <strong>organic Home feed</strong> only. It does <strong>not</strong> apply to the Standalone exclusive-content card (CA-2982) or the Explore card (CA-2983) — those are insertion units with their own purchase-based ranking.</p>
+    <table class="tbl">
+      <thead><tr><th></th><th>Home Recommendation (this doc)</th><th>Standalone card (CA-2982)</th></tr></thead>
+      <tbody>
+        <tr><td>Ranking</td><td><code>Score = Relevance + Popularity + Freshness + Boosts</code></td><td>Purchase count (7d) desc, tie → create time desc</td></tr>
+        <tr><td>Content</td><td>All published home videos</td><td>Best-seller exclusive content (cross-creator)</td></tr>
+        <tr><td>Cadence</td><td>Continuous, by score</td><td>1 card / 10 posts, cap 5 / session</td></tr>
+        <tr><td>Personalization</td><td>Yes (Relevance to user)</td><td>None — by design</td></tr>
+        <tr><td>Update</td><td>Read-time each feed open</td><td>On purchase → updates mid-session</td></tr>
+      </tbody>
+    </table>
+    <p style="font-size:0.82rem;color:var(--muted);margin-top:10px;">Standalone &amp; Explore cards are an <strong>insertion layer</strong> on top of the already-ranked feed — they don't share the 4.2 / 4.3 / Step 5 formulas.</p>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- DATA SOURCES -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Data Sources Summary</h2>
+    </div>
+    <table class="tbl">
+      <thead><tr><th>Signal</th><th>Source</th><th>Used in</th></tr></thead>
+      <tbody>
+        <tr><td>User's preferred genres</td><td>User Profile (explicit selection)</td><td>Relevance Score</td></tr>
+        <tr><td>User's region</td><td>User account / device locale (auto, not selected)</td><td>Relevance Score</td></tr>
+        <tr><td>Recent favorited / called / watched avatars</td><td>User behavior</td><td>Interest Profile, Similarity engaged set</td></tr>
+        <tr><td>Recent completed videos (&gt; 50%)</td><td>User behavior</td><td>Interest Profile, Similarity engaged set</td></tr>
+        <tr><td>Video genre tags (max 3)</td><td>AI video analysis (CA-3007)</td><td>Relevance Score (Genre Match)</td></tr>
+        <tr><td>Video region</td><td>Creator setting / detected</td><td>Relevance Score (Region Match)</td></tr>
+        <tr><td>Video mood / detected entities / settings</td><td>AI video analysis</td><td>Relevance Score (Similarity)</td></tr>
+        <tr><td>Mood / entities / settings of engaged videos</td><td>User behavior (recent engaged set)</td><td>Relevance Score (Similarity, MVP)</td></tr>
+        <tr><td>Video content embedding <span class="pill pill-purple" style="font-size:0.62rem;">V3</span></td><td>AI video analysis</td><td>Relevance Score (Similarity upgrade)</td></tr>
+        <tr><td>Favorites (unique users)</td><td>Platform engagement</td><td>Popularity Score</td></tr>
+        <tr><td>Call-through rate (calls_from_home / Home views)</td><td>Platform engagement (call event: entry_point, source_video_id)</td><td>Popularity Score</td></tr>
+        <tr><td>Completion rate (10s cap)</td><td>Platform engagement</td><td>Popularity Score</td></tr>
+        <tr><td>first_publish_ts (immutable)</td><td>Video metadata</td><td>Freshness Boost</td></tr>
+        <tr><td>AIA Link status</td><td>AIA account link</td><td>Boost (Step 5)</td></tr>
+        <tr><td>Featured Boost value</td><td>Ops team via CMS</td><td>Boost (Step 5)</td></tr>
+        <tr><td>Block / report / not interested</td><td>User action</td><td>Filtering (Step 2)</td></tr>
+        <tr><td>last_seen_ts (display / watch / call / livestream watch, per video)</td><td>User behavior</td><td>Seen Cooldown (Step 2)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ROADMAP -->
+  <div class="section">
+    <div class="section-header">
+      <h2>Expansion Roadmap</h2>
+    </div>
+    <div class="roadmap">
+      <div class="rm-item">
+        <div class="rm-phase">MVP</div>
+        <div class="rm-label">Core signals</div>
+        <div class="rm-desc">Genre tags, region, similarity (mood/entities/settings proxy), recent favorites/calls/watches, completed videos, completion rate, freshness</div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-phase">V2</div>
+        <div class="rm-label">Richer content signals</div>
+        <div class="rm-desc">Pacing preference, avatar aesthetic style, audio/voice style (mood/entities/settings already in MVP Similarity)</div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-phase">V3</div>
+        <div class="rm-label">Learned ranking + embedding Similarity</div>
+        <div class="rm-desc">Upgrades the <strong>Similarity</strong> term from attribute proxy to content embeddings (video-to-video); personalized ranking model trained on full behavior history</div>
+      </div>
+      <div class="rm-item">
+        <div class="rm-phase">V4</div>
+        <div class="rm-label">Real-time context</div>
+        <div class="rm-desc">Session context, time-of-day patterns, trending topics</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;color:var(--muted);font-size:0.8rem;padding:40px 0 20px;">
+    Twomi · Home Feed Recommendation · MVP V1 · June 2026
+  </div>
+
+</div>
+</body>
+</html>
